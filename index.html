@@ -17,7 +17,7 @@
 
 <div class="toolbar">
   <button onclick="saveCode()">保存</button>
-  <button onclick="loadCode()">読み込み</button>
+  <button onclick="loadCodeFromGitHub()">GitHub読み込み</button>
   <button onclick="clearEditor()">リセット</button>
   <button onclick="toggleScriptAPI()">ScriptAPIチェック</button>
 </div>
@@ -37,16 +37,8 @@ require(['vs/editor/editor.main'], function() {
 function greet(name) {
   console.log("Hello, " + name);
 }
-greet("World");
+greet("World");`;
 
-// JSONサンプル
-{
-  "name": "John",
-  "age": 30,
-  "city": "Tokyo"
-}`;
-
-  // 左：サンプルコード
   const leftEditor = monaco.editor.create(document.getElementById('left'), {
     value: sampleCode,
     language: 'javascript',
@@ -56,7 +48,6 @@ greet("World");
     lineNumbers: 'on',
   });
 
-  // 右：ユーザー編集エリア
   const rightEditor = monaco.editor.create(document.getElementById('right'), {
     value: localStorage.getItem('userCode') || '',
     language: 'javascript',
@@ -70,73 +61,70 @@ greet("World");
 
   const errorDisplay = document.getElementById('errorDisplay');
 
-  // 構文チェック
   function checkSyntax() {
     const code = rightEditor.getValue();
-    try {
-      new Function(code);
-      errorDisplay.textContent = '';
-    } catch(e) {
-      errorDisplay.textContent = `構文エラー: ${e.message}`;
-    }
+    try { new Function(code); errorDisplay.textContent = ''; }
+    catch(e) { errorDisplay.textContent = `構文エラー: ${e.message}`; }
   }
 
   rightEditor.onDidChangeModelContent(() => {
     checkSyntax();
-    // ローカルストレージに自動保存
     localStorage.setItem('userCode', rightEditor.getValue());
   });
 
   // 保存
-  function saveCode() {
+  window.saveCode = function() {
     const code = rightEditor.getValue();
     const fileName = prompt("保存するファイル名を入力してください:");
-    if(!fileName) { alert("ファイル名は必須です！"); return; }
+    if(!fileName){ alert("ファイル名は必須です！"); return; }
     const blob = new Blob([code], {type:'text/plain'});
     const link = document.createElement('a');
     link.href = URL.createObjectURL(blob);
-    link.download = fileName.endsWith('.js') || fileName.endsWith('.json') ? fileName : fileName+'.js';
+    link.download = fileName.endsWith('.js')?fileName:fileName+'.js';
     link.click();
   }
 
-  // 読み込み
-  function loadCode() {
-    const input = document.createElement('input');
-    input.type = 'file';
-    input.accept = '.js,.json';
-    input.onchange = e => {
-      const file = e.target.files[0];
-      if(file) {
-        const reader = new FileReader();
-        reader.onload = () => {
-          rightEditor.setValue(reader.result);
-        };
-        reader.readAsText(file);
-      }
-    };
-    input.click();
+  // GitHub読み込み
+  window.loadCodeFromGitHub = async function() {
+    const repo = prompt("GitHubリポジトリURLを入力:");
+    const path = prompt("ファイルパスを入力（例: test.js）:");
+    if(!repo || !path) return alert("URLとファイルパスは必須です");
+    try {
+      // URL例: https://raw.githubusercontent.com/username/repo/branch/path/to/file.js
+      let rawURL = repo.replace(/\/$/, '') + '/raw/main/' + path;
+      const resp = await fetch(rawURL);
+      if(!resp.ok) throw new Error(resp.status + " " + resp.statusText);
+      const text = await resp.text();
+      rightEditor.setValue(text);
+      alert("読み込み成功");
+    } catch(e) {
+      alert("GitHub読み込みエラー: "+e.message);
+    }
   }
 
   // リセット
-  function clearEditor() {
-    if(confirm("本当にリセットしますか？")) {
+  window.clearEditor = function() {
+    if(confirm("本当にリセットしますか？")){
       rightEditor.setValue('');
       localStorage.removeItem('userCode');
     }
   }
 
-  // ScriptAPIチェック（Minecraft Script API構文チェックを想定）
-  function toggleScriptAPI() {
+  // ScriptAPIチェック
+  window.toggleScriptAPI = function() {
     const code = rightEditor.getValue();
-    // 実際には @minecraft/server モジュールなどサーバー側での確認が必要
-    // ブラウザ上では簡易チェックのみ
     try {
-      new Function(code); // JS構文チェックとして代用
-      alert("ScriptAPI構文チェック: エラーなし（簡易チェック）");
-    } catch(e) {
-      alert("ScriptAPI構文チェック: エラーあり\n"+e.message);
+      new Function(code); // 構文チェック
+      try { eval(code); } // 未定義・非対応のチェック
+      catch(e){ alert("ScriptAPIチェック: エラーあり\n" + e.message); return; }
+      alert("ScriptAPIチェック: エラーなし");
+    } catch(e){
+      alert("構文エラー: " + e.message);
     }
   }
+
+  // コーデとしての最後に completion(result)
+  if(typeof completion==='function'){ completion(result); }
 
 });
 </script>
