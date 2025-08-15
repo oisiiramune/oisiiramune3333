@@ -1,19 +1,14 @@
-document.addEventListener('DOMContentLoaded', function () {
-  if (typeof require === 'undefined') {
-    console.error('Monaco loader.js が読み込まれていません。');
-    return;
-  }
-
+window.addEventListener('DOMContentLoaded', () => {
   require.config({ paths: { 'vs': 'https://cdn.jsdelivr.net/npm/monaco-editor@0.41.0/min/vs' }});
 
-  require(['vs/editor/editor.main'], function () {
+  require(['vs/editor/editor.main'], function() {
+
     const sampleCode = `// サンプル JavaScript
 function greet(name) {
   console.log("Hello, " + name);
 }
 greet("World");`;
 
-    // 左：サンプルコード
     const leftEditor = monaco.editor.create(document.getElementById('left'), {
       value: sampleCode,
       language: 'javascript',
@@ -23,7 +18,6 @@ greet("World");`;
       lineNumbers: 'on'
     });
 
-    // 右：ユーザー編集エリア
     const rightEditor = monaco.editor.create(document.getElementById('right'), {
       value: localStorage.getItem('userCode') || '',
       language: 'javascript',
@@ -37,85 +31,74 @@ greet("World");`;
 
     const errorDisplay = document.getElementById('errorDisplay');
 
-    // JS構文チェック
+    // --- 構文チェック関数 ---
     function checkSyntax() {
       const code = rightEditor.getValue();
       try {
         new Function(code);
         errorDisplay.textContent = '';
-      } catch (e) {
+      } catch(e) {
         errorDisplay.textContent = `構文エラー: ${e.message}`;
       }
     }
 
-    // ScriptAPIチェック（常時）
-    function checkScriptAPI() {
+    // --- 常時構文チェック ---
+    rightEditor.onDidChangeModelContent(() => {
+      checkSyntax();
+      localStorage.setItem('userCode', rightEditor.getValue());
+    });
+
+    // --- ボタン ---
+    function saveHandler() {
       const code = rightEditor.getValue();
-      const findings = [];
-
-      try { new Function(code); } catch(e) { findings.push('構文エラー: '+e.message); }
-
-      const bannedModules = ['@minecraft/server','@minecraft/server-ui','@minecraft/common'];
-      bannedModules.forEach(mod => { if(code.includes(mod)) findings.push('非対応モジュール: '+mod); });
-
-      if(/require\s*\(/.test(code) || /\bimport\s+.+from\s+['"][^'"]+['"]/.test(code)) {
-        findings.push('注意: import/require 含む');
-      }
-
-      errorDisplay.textContent = findings.length ? findings.join('\n') : 'ScriptAPIチェック: エラーなし';
+      const fileName = prompt('保存するファイル名を入力してください:');
+      if (!fileName) return alert('ファイル名は必須です！');
+      const blob = new Blob([code], { type: 'text/plain' });
+      const link = document.createElement('a');
+      link.href = URL.createObjectURL(blob);
+      link.download = fileName.endsWith('.js') ? fileName : fileName+'.js';
+      document.body.appendChild(link);
+      link.click();
+      setTimeout(() => {
+        URL.revokeObjectURL(link.href);
+        document.body.removeChild(link);
+      }, 0);
     }
 
-    // 自動保存 & 常時チェック
-    rightEditor.onDidChangeModelContent(() => {
-      localStorage.setItem('userCode', rightEditor.getValue());
-      checkSyntax();
-      checkScriptAPI();
-    });
+    async function loadHandler() {
+      const input = document.createElement('input');
+      input.type = 'file';
+      input.webkitdirectory = true; // フォルダ選択対応
+      input.multiple = true;
+      input.accept = '.js,.json,.txt';
+      input.onchange = e => {
+        const files = Array.from(e.target.files);
+        files.forEach(f => {
+          const reader = new FileReader();
+          reader.onload = () => rightEditor.setValue(prev => prev + '\n// ' + f.name + '\n' + reader.result);
+          reader.readAsText(f);
+        });
+      };
+      input.click();
+    }
+
+    function clearHandler() {
+      if (confirm('本当にリセットしますか？')) {
+        rightEditor.setValue('');
+        localStorage.removeItem('userCode');
+        errorDisplay.textContent = '';
+      }
+    }
+
+    // --- イベント ---
+    document.getElementById('saveBtn').addEventListener('click', saveHandler);
+    document.getElementById('loadBtn').addEventListener('click', loadHandler);
+    document.getElementById('clearBtn').addEventListener('click', clearHandler);
 
     // 初回チェック
     checkSyntax();
-    checkScriptAPI();
 
-    // ボタンイベント
-    document.getElementById('saveBtn').addEventListener('click', function () {
-      const code = rightEditor.getValue();
-      const fileName = prompt('保存するファイル名を入力 (.js 推奨):');
-      if (!fileName) return alert('ファイル名必須!');
-      const blob = new Blob([code], {type:'text/plain'});
-      const link = document.createElement('a');
-      link.href = URL.createObjectURL(blob);
-      link.download = (/\.(js|json)$/i).test(fileName)? fileName:fileName+'.js';
-      document.body.appendChild(link);
-      link.click();
-      document.body.removeChild(link);
-    });
-
-    document.getElementById('loadBtn').addEventListener('click', async function () {
-      const maybeURL = prompt('GitHub のファイルURL（空欄でローカル選択）:');
-      if(maybeURL && maybeURL.trim()) {
-        const rawURL = maybeURL.replace('github.com','raw.githubusercontent.com').replace('/blob/','/');
-        try {
-          const resp = await fetch(rawURL,{cache:'no-cache'});
-          if(!resp.ok) throw new Error(`${resp.status} ${resp.statusText}`);
-          rightEditor.setValue(await resp.text());
-          alert('GitHub から読み込み成功');
-        } catch(e) { alert('読み込みエラー: '+e.message); }
-        return;
-      }
-      // ローカルファイル
-      const input = document.createElement('input');
-      input.type='file'; input.accept='.js,.json,.txt';
-      input.onchange = e => {
-        const f = e.target.files[0];
-        if(f){ const r = new FileReader(); r.onload=()=>rightEditor.setValue(r.result); r.readAsText(f); }
-      };
-      input.click();
-    });
-
-    document.getElementById('clearBtn').addEventListener('click', function () {
-      if(confirm('リセットしますか?')) { rightEditor.setValue(''); localStorage.removeItem('userCode'); errorDisplay.textContent=''; }
-    });
-
-    document.getElementById('checkBtn').addEventListener('click', checkScriptAPI);
+    // --- コードとしての最後 ---
+    if (typeof completion === 'function') completion(result);
   });
 });
