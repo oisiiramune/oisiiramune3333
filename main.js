@@ -31,7 +31,7 @@ greet("World");`;
 
     const errorDisplay = document.getElementById('errorDisplay');
 
-    // --- 構文チェック関数 ---
+    // --- 構文チェック ---
     function checkSyntax() {
       const code = rightEditor.getValue();
       try {
@@ -42,13 +42,13 @@ greet("World");`;
       }
     }
 
-    // --- 常時構文チェック ---
+    // --- 常時チェック ---
     rightEditor.onDidChangeModelContent(() => {
       checkSyntax();
       localStorage.setItem('userCode', rightEditor.getValue());
     });
 
-    // --- ボタン ---
+    // --- 保存 ---
     function saveHandler() {
       const code = rightEditor.getValue();
       const fileName = prompt('保存するファイル名を入力してください:');
@@ -65,27 +65,29 @@ greet("World");`;
       }, 0);
     }
 
+    // --- 読み込み（ファイル単体 or 複数） ---
     async function loadHandler() {
       const input = document.createElement('input');
       input.type = 'file';
-      input.webkitdirectory = true; // フォルダ選択対応
-      input.multiple = true;
-      input.accept = '.js,.json,.txt';
+      input.multiple = true;           // 複数ファイル対応
+      input.accept = '.js,.json,.txt'; // iOSでも有効
+
       input.onchange = e => {
         const files = Array.from(e.target.files);
-        let combined = rightEditor.getValue();
         files.forEach(f => {
           const reader = new FileReader();
           reader.onload = () => {
-            combined += '\n// ' + f.name + '\n' + reader.result;
-            rightEditor.setValue(combined);
+            const prev = rightEditor.getValue();
+            rightEditor.setValue(prev + '\n// ' + f.name + '\n' + reader.result);
           };
           reader.readAsText(f);
         });
       };
+
       input.click();
     }
 
+    // --- リセット ---
     function clearHandler() {
       if (confirm('本当にリセットしますか？')) {
         rightEditor.setValue('');
@@ -94,7 +96,7 @@ greet("World");`;
       }
     }
 
-    // --- イベント ---
+    // --- ボタンイベント ---
     document.getElementById('saveBtn').addEventListener('click', saveHandler);
     document.getElementById('loadBtn').addEventListener('click', loadHandler);
     document.getElementById('clearBtn').addEventListener('click', clearHandler);
@@ -104,6 +106,5 @@ greet("World");`;
 
     // --- コードとしての最後 ---
     if (typeof completion === 'function') completion(result);
-
   });
 });
