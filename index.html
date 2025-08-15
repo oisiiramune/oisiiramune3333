@@ -6,22 +6,17 @@
 <link rel="stylesheet" href="style.css">
 </head>
 <body>
-
 <div class="toolbar">
-  <button onclick="saveCode()">保存</button>
-  <button onclick="loadCode()">読み込み</button>
-  <button onclick="clearEditor()">リセット</button>
-  <button onclick="toggleScriptAPI()">ScriptAPIチェック</button>
+  <button id="saveBtn">保存</button>
+  <button id="loadBtn">読み込み</button>
+  <button id="clearBtn">リセット</button>
+  <button id="checkBtn">ScriptAPIチェック</button>
 </div>
-
 <div id="editor">
   <div id="left"></div>
   <div id="right"></div>
 </div>
 <div id="errorDisplay"></div>
-
-<script src="https://cdn.jsdelivr.net/npm/monaco-editor@0.41.0/min/vs/loader.js"></script>
-<script src="editor.js?v=1"></script>
-
+<script type="module" src="main.js"></script>
 </body>
 </html>
