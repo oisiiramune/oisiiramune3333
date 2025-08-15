@@ -1,18 +1,15 @@
 <!DOCTYPE html>
 <html lang="ja">
 <head>
-  <meta charset="UTF-8">
-  <title>VSCode風コードエディタ</title>
-  <!-- 外部CSS読み込み -->
-  <link rel="stylesheet" href="style.css">
-  <!-- Monaco Editor loaderはCDNで -->
-  <script src="https://cdn.jsdelivr.net/npm/monaco-editor@0.41.0/min/vs/loader.js"></script>
+<meta charset="UTF-8">
+<title>VSCode風コードエディタ</title>
+<link rel="stylesheet" href="style.css">
 </head>
 <body>
 
 <div class="toolbar">
   <button onclick="saveCode()">保存</button>
-  <button onclick="loadCodeFromGitHub()">GitHub読み込み</button>
+  <button onclick="loadCode()">読み込み</button>
   <button onclick="clearEditor()">リセット</button>
   <button onclick="toggleScriptAPI()">ScriptAPIチェック</button>
 </div>
@@ -23,7 +20,8 @@
 </div>
 <div id="errorDisplay"></div>
 
-<!-- 外部JS読み込み -->
-<script src="editor.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/monaco-editor@0.41.0/min/vs/loader.js"></script>
+<script src="editor.js?v=1"></script>
+
 </body>
 </html>
