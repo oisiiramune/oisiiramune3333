@@ -1,0 +1,145 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+<meta charset="UTF-8">
+<title>VSCode風コードエディタ</title>
+<style>
+  body { margin:0; height:100vh; display:flex; flex-direction:column; background:#1e1e1e; color:#fff; font-family:sans-serif; }
+  .toolbar { display:flex; flex-wrap:wrap; padding:5px; background:#333; }
+  .toolbar button { background:#444; border:none; padding:5px 10px; margin:2px; cursor:pointer; color:#fff; }
+  .toolbar button:hover { background:#555; }
+  #editor { flex:1; display:flex; }
+  #left, #right { width:50%; height:100%; }
+  #errorDisplay { color:red; padding:5px; background:#222; font-family:monospace; white-space:pre-wrap; }
+</style>
+</head>
+<body>
+
+<div class="toolbar">
+  <button onclick="saveCode()">保存</button>
+  <button onclick="loadCode()">読み込み</button>
+  <button onclick="clearEditor()">リセット</button>
+  <button onclick="toggleScriptAPI()">ScriptAPIチェック</button>
+</div>
+
+<div id="editor">
+  <div id="left"></div>
+  <div id="right"></div>
+</div>
+<div id="errorDisplay"></div>
+
+<script src="https://cdn.jsdelivr.net/npm/monaco-editor@0.41.0/min/vs/loader.js"></script>
+<script>
+require.config({ paths: { 'vs': 'https://cdn.jsdelivr.net/npm/monaco-editor@0.41.0/min/vs' }});
+require(['vs/editor/editor.main'], function() {
+
+  const sampleCode = `// サンプル JavaScript
+function greet(name) {
+  console.log("Hello, " + name);
+}
+greet("World");
+
+// JSONサンプル
+{
+  "name": "John",
+  "age": 30,
+  "city": "Tokyo"
+}`;
+
+  // 左：サンプルコード
+  const leftEditor = monaco.editor.create(document.getElementById('left'), {
+    value: sampleCode,
+    language: 'javascript',
+    theme: 'vs-dark',
+    readOnly: true,
+    automaticLayout: true,
+    lineNumbers: 'on',
+  });
+
+  // 右：ユーザー編集エリア
+  const rightEditor = monaco.editor.create(document.getElementById('right'), {
+    value: localStorage.getItem('userCode') || '',
+    language: 'javascript',
+    theme: 'vs-dark',
+    automaticLayout: true,
+    lineNumbers: 'on',
+    autoClosingBrackets: 'always',
+    autoClosingQuotes: 'always',
+    suggestOnTriggerCharacters: true,
+  });
+
+  const errorDisplay = document.getElementById('errorDisplay');
+
+  // 構文チェック
+  function checkSyntax() {
+    const code = rightEditor.getValue();
+    try {
+      new Function(code);
+      errorDisplay.textContent = '';
+    } catch(e) {
+      errorDisplay.textContent = `構文エラー: ${e.message}`;
+    }
+  }
+
+  rightEditor.onDidChangeModelContent(() => {
+    checkSyntax();
+    // ローカルストレージに自動保存
+    localStorage.setItem('userCode', rightEditor.getValue());
+  });
+
+  // 保存
+  function saveCode() {
+    const code = rightEditor.getValue();
+    const fileName = prompt("保存するファイル名を入力してください:");
+    if(!fileName) { alert("ファイル名は必須です！"); return; }
+    const blob = new Blob([code], {type:'text/plain'});
+    const link = document.createElement('a');
+    link.href = URL.createObjectURL(blob);
+    link.download = fileName.endsWith('.js') || fileName.endsWith('.json') ? fileName : fileName+'.js';
+    link.click();
+  }
+
+  // 読み込み
+  function loadCode() {
+    const input = document.createElement('input');
+    input.type = 'file';
+    input.accept = '.js,.json';
+    input.onchange = e => {
+      const file = e.target.files[0];
+      if(file) {
+        const reader = new FileReader();
+        reader.onload = () => {
+          rightEditor.setValue(reader.result);
+        };
+        reader.readAsText(file);
+      }
+    };
+    input.click();
+  }
+
+  // リセット
+  function clearEditor() {
+    if(confirm("本当にリセットしますか？")) {
+      rightEditor.setValue('');
+      localStorage.removeItem('userCode');
+    }
+  }
+
+  // ScriptAPIチェック（Minecraft Script API構文チェックを想定）
+  function toggleScriptAPI() {
+    const code = rightEditor.getValue();
+    // 実際には @minecraft/server モジュールなどサーバー側での確認が必要
+    // ブラウザ上では簡易チェックのみ
+    try {
+      new Function(code); // JS構文チェックとして代用
+      alert("ScriptAPI構文チェック: エラーなし（簡易チェック）");
+    } catch(e) {
+      alert("ScriptAPI構文チェック: エラーあり\n"+e.message);
+    }
+  }
+
+});
+</script>
+
+</body>
+</html>
