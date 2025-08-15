@@ -73,9 +73,13 @@ greet("World");`;
       input.accept = '.js,.json,.txt';
       input.onchange = e => {
         const files = Array.from(e.target.files);
+        let combined = rightEditor.getValue();
         files.forEach(f => {
           const reader = new FileReader();
-          reader.onload = () => rightEditor.setValue(prev => prev + '\n// ' + f.name + '\n' + reader.result);
+          reader.onload = () => {
+            combined += '\n// ' + f.name + '\n' + reader.result;
+            rightEditor.setValue(combined);
+          };
           reader.readAsText(f);
         });
       };
@@ -100,5 +104,6 @@ greet("World");`;
 
     // --- コードとしての最後 ---
     if (typeof completion === 'function') completion(result);
+
   });
 });
